@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+   name: {{ .Values.Name }}
+   namespace: {{ .Values.namespace }}
+   labels:
+     service: {{ .Values.service.name }}
+     env: {{ .Values.env }}
+spec:
+   serviceName: {{ .Values.service.name }}
+   replicas:  {{ .Values.replicaCount }}
+   updateStrategy:
+      type: RollingUpdate
+   selector:
+      matchLabels:
+         service: {{ .Values.service.name }}
+         env:  {{ .Values.env}}
+   template:
+      metadata:
+         labels:
+           service: {{ .Values.service.name }}
+           env: {{ .Values.env }}
+      spec:
+         terminationGracePeriodSeconds: 180
+         {{- if .Values.image.usePullSecret }}
+         imagePullSecrets:
+            - name: {{ .Values.image.pullSecretName }}
+         {{- end }}
+        {{- with .Values.securityContext }}
+         securityContext:
+           {{- toYaml . | nindent 11 }}
+         {{- end }}
+         {{- if .Values.initContainers.enabled }}
+         initContainers:
+            - name: {{ .Values.initContainers.name | default "arango" }}
+              image: {{ .Values.initContainers.image | default "busybox:latest" }}
+              securityContext:
+                runAsUser: {{ .Values.initContainers.securityContext.runAsUser }}
+              command: {{ .Values.initContainers.command  }}
+              args: {{ .Values.initContainers.arguments }}
+              volumeMounts:
+                - name: {{ .Values.initContainers.volumeMounts.name }}
+                  mountPath: {{ .Values.initContainers.volumeMounts.mountPath }}
+         {{- end }}
+         containers:
+            - name: {{ .Values.containers.name | default "arango" }}
+              image: {{ .Values.image.registry }}:{{ .Values.image.tag }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              ports:
+                {{- range .Values.containers.ports }}
+                 - name: {{ .name }}
+                   containerPort: {{ .containerPort}}
+                {{- end }}
+              {{- with .Values.envvar }}
+              env:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              {{- with .Values.probes.livenessProbe }}
+              livenessProbe:
+                 {{- toYaml . | nindent 16 }}
+              {{- end }}
+              {{- with .Values.probes.readinessProbe }}
+              readinessProbe:
+                 {{- toYaml . | nindent 16 }}
+              {{- end }}
+              {{- with .Values.resources }}
+              resources:
+                 {{- toYaml . | nindent 15 }}
+              {{- end }}
+              {{- if .Values.volumemounts.enabled }}
+              volumeMounts:
+                {{- range .Values.volumemounts.mount }}
+                 - name: {{ .name }}
+                   mountPath: {{ .mountPath }}
+                {{- end}}
+              {{- end }}
+   {{- if .Values.volumeClaimTemplates.enabled }}
+   volumeClaimTemplates:
+     {{- range .Values.volumeClaimTemplates.claim }}
+    - metadata:
+        name: {{ .name }}
+      spec:
+        accessModes:
+          -  {{  .accessModes }}
+        resources:
+          requests:
+            storage: {{ .size }}
+        storageClassName: {{ .storageClass }}
+    {{- end }}
+{{- end }}
