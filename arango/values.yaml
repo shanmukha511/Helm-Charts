@@ -1,0 +1,136 @@
+# Default values for arango.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+#  Name
+Name: arango
+
+# Namespace Name
+namespace: default
+
+#Environment where you are deploying the helm chart
+env: default
+
+# Replicas Count
+replicaCount: 1
+
+# image Details
+image:
+  # Image Registry
+  registry: arango
+  # Image Version
+  tag: 3.3.8
+  # Image Pull Policy
+  pullPolicy: Always
+  # Specifies whether pull secret to be Enabled
+  usePullSecret: true
+  # Image Pull Secret Name
+  pullSecretName: test
+
+
+# PodSecurityContext
+securityContext:
+  runAsUser: 999
+  runAsGroup: 999
+  fsGroup: 999
+
+# Environment variables
+envvar:
+  - name: ARANGO_STORAGE_ENGINE
+    value: rocksdb
+  - name: ARANGO_ROOT_PASSWORD
+    valueFrom:
+      secretKeyRef:
+          name: arango-secret
+          key: ARANGO_PASSWORD
+
+# Service Details
+service:
+  #Annotation for worker service if the service type is LoadBalancer and when we want to have internal IP
+  annotations:
+      cloud.google.com/load-balancer-type: "Internal"
+  #Service type
+  type: LoadBalancer
+  #Load balancer IP type internal or external, true if we want to have internal loadbalancer IP
+  loadbalancerInternal_IP: false
+  # LoadBalancer Reserved Static IP true or false
+  staticIP: false
+  # LoadBalancer Reserved Static IP
+  staticLoadBalancerIp:
+  #Allowed source ranges for loadbalancer IP
+  loadBalancerSourceRanges: {}
+  #Service Name
+  name: arango
+  #Service Ports
+  ports:
+    - name: arango
+      port: 8529
+      targetPort: arango
+
+# Init Container Details
+initContainers:
+  enabled: false
+  name: init
+  image:  busybox:latest
+  command:  [ sh ]
+  arguments: [
+    "-c,",
+    "chown -R 999 /var/lib/arangodb3"]
+  securityContext:
+    runAsUser: 0
+  volumeMounts:
+     name: arango-data
+     mountPath: /var/lib/arangodb3
+
+# Container Details
+containers:
+  name: arango
+# Container Ports
+  ports:
+    - name: arango
+      containerPort: 8529
+
+# Probes Details
+probes:
+  # Liveliness Probe
+  livenessProbe:
+     tcpSocket:
+        port: arango
+     initialDelaySeconds: 180
+     periodSeconds: 20
+  # Readiness Probe
+  readinessProbe:
+     tcpSocket:
+        port: arango
+     initialDelaySeconds: 180
+     periodSeconds: 30
+
+# Resource Limits And Requets
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # Specifies whether Resource Limits and Requests should be created
+  requests:
+    memory: "40G"
+    cpu: "600m"
+  limits:
+    memory: "50G"
+    cpu: "1"
+
+# persistent volume claim templates
+volumeClaimTemplates:
+  enabled: true
+  claim:
+    - name: arango-data
+      size: 100Gi
+      accessModes:  ReadWriteOnce
+      storageClass: standard
+
+#Volume mounts
+volumemounts:
+  enabled: true
+  mount:
+    - name: arango-data
+      mountPath: /var/lib/arangodb3
