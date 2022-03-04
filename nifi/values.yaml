@@ -1,0 +1,132 @@
+# Default values for redis.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+#  Name
+Name: nifi
+
+# Namespace Name
+namespace: default
+
+#Environment where you are deploying the helm chart
+env: default
+
+# Replicas Count
+replicaCount: 1
+
+# image Details
+image:
+  # Image Registry
+  registry: nifi
+  # Image Version
+  tag: "1.11.4"
+  # Image Pull Policy
+  pullPolicy: Always
+  # Specifies whether pull secret to be Enabled
+  usePullSecret: true
+  # Image Pull Secret Name
+  pullSecretName: jfrog-dev
+
+
+# PodSecurityContext
+securityContext:
+   runAsUser: 1000
+   runAsGroup: 1000
+   fsGroup: 1000
+
+# Environment variables
+envvar:
+  enabled: true
+  envkeyval:
+    enabled: true
+    list:
+      - name: NIFI_WEB_HTTP_PORT
+        value: 8080
+
+# Service Details
+service:
+  #Annotation for worker service if the service type is LoadBalancer and when we want to have internal IP
+  annotations:
+      cloud.google.com/load-balancer-type: "Internal"
+  #Service type
+  type:
+  #Load balancer IP type internal or external, true if we want to have internal loadbalancer IP
+  loadbalancerInternal_IP: false
+  # LoadBalancer Reserved Static IP true or false
+  staticIP: false
+  # LoadBalancer Reserved Static IP
+  staticLoadBalancerIp:
+  #Allowed source ranges for loadbalancer IP
+  loadBalancerSourceRanges: {}
+  #Service Name
+  name: nifi
+  #Service Ports
+  ports:
+    - name: nifi
+      port: 8079
+      targetPort: 8080
+    - name: ingestion
+      port: 8082
+      targetPort: 8082
+    - name: tbd
+      port: 8083
+      targetPort: 8083
+    - name: nifi2
+      port: 8084
+      targetPort: 8084
+    - name: nifi3
+      port: 8085
+      targetPort: 8085
+
+# Container Details
+containers:
+  name: nifi
+# Container Ports
+  ports:
+    - name: nifi
+      containerPort: 8080
+    - name: ingestion
+      containerPort: 8082
+    - name: tbd
+      containerPort: 8083
+    - name: nifi2
+      containerPort: 8084
+    - name: nifi3
+      containerPort: 8085
+
+# Probes Details
+probes:
+  # Liveliness Probe
+  livenessProbe:
+     tcpSocket:
+        port: nifi
+     initialDelaySeconds: 180
+     periodSeconds: 20
+  # Readiness Probe
+  readinessProbe:
+     tcpSocket:
+        port: nifi
+     initialDelaySeconds: 180
+     periodSeconds: 30
+
+# Resource Limits And Requets
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # Specifies whether Resource Limits and Requests should be created
+  requests:
+    memory: "8G"
+    cpu: "1200m"
+  limits:
+    memory: "10G"
+    cpu: "2"
+
+# persistent volume claim templates
+volumeClaimTemplates:
+  enabled: true
+
+#Volume mounts
+volumemounts:
+  enabled: true
